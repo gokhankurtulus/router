@@ -4,7 +4,8 @@
   "keywords": [
     "router",
     "request",
-    "response"
+    "response",
+    "cors"
   ],
   "type": "library",
   "license": "MIT",

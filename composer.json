@@ -1,0 +1,35 @@
+{
+  "name": "gokhankurtulus/router",
+  "description": "A simple PHP library for handling router actions.",
+  "keywords": [
+    "router",
+    "request",
+    "response"
+  ],
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Router\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "gokhankurtulus",
+      "email": "gokhan@gokhankurtulus.com",
+      "homepage": "https://github.com/gokhankurtulus"
+    }
+  ],
+  "require": {
+    "php": "^8.0 || ^8.1 || ^8.2",
+    "gokhankurtulus/logger": "^1.0",
+    "ext-curl": "*",
+    "ext-simplexml": "*",
+    "ext-libxml": "*"
+  },
+  "config": {
+    "preferred-install": "dist"
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}

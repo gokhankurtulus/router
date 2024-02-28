@@ -93,7 +93,10 @@ class Response
         if (is_numeric($this->getStatusCode())) {
             http_response_code($this->getStatusCode());
         }
-        if (Request::method() !== 'OPTIONS' && Request::method() !== 'HEAD') {
+        if (Request::method() !== 'OPTIONS' &&
+            Request::method() !== 'HEAD' &&
+            Request::contentType() !== "text/html" &&
+            !Request::isAccepts('text/html')) {
             $response = [
                 'code' => $this->getStatusCode(),
                 'success' => $this->getSuccess(),

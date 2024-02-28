@@ -55,12 +55,11 @@ class Application
                 'message' => $message
             ];
             echo View::render("_error", ['error' => $error], View::getErrorLayout());
-        } else {
-            static::$response->setHttpStatus($httpStatus)
-                ->setSuccess(false)
-                ->setCache(false)
-                ->addMessage($message)
-                ->send();
         }
+        static::$response->setHttpStatus($httpStatus)
+            ->setSuccess(false)
+            ->setCache(false)
+            ->addMessage($message)
+            ->send();
     }
 }

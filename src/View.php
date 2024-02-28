@@ -11,26 +11,26 @@ use Router\Loggers\ViewLogger;
 
 class View
 {
-    protected static ?string $viewsPath = null;
-    protected static ?string $errorLayout = null;
+    protected static string $viewsPath = "";
+    protected static string $errorLayout = "";
     protected static array $carryData = [];
 
-    public static function getViewsPath(): ?string
+    public static function getViewsPath(): string
     {
         return static::$viewsPath;
     }
 
-    public static function setViewsPath(?string $viewsPath): void
+    public static function setViewsPath(string $viewsPath): void
     {
         static::$viewsPath = $viewsPath;
     }
 
-    public static function getErrorLayout(): ?string
+    public static function getErrorLayout(): string
     {
         return static::$errorLayout;
     }
 
-    public static function setErrorLayout(?string $errorLayout): void
+    public static function setErrorLayout(string $errorLayout): void
     {
         static::$errorLayout = $errorLayout;
     }

@@ -60,9 +60,9 @@ class Router
         if ($matches !== false) {
             if (is_callable($endpoint['action'])) {
                 return call_user_func($endpoint['action'], $matches);
-            } elseif (class_exists($endpoint['controller'])) {
+            } elseif (isset($endpoint['controller']) && class_exists($endpoint['controller'])) {
                 $controller = new $endpoint['controller']($matches, static::$request, static::$response);
-                if (is_callable([$controller, $endpoint['action']])) {
+                if ($controller && is_callable([$controller, $endpoint['action']])) {
                     return call_user_func([$controller, $endpoint['action']]);
                 }
             }

@@ -99,7 +99,7 @@ class Response
         if (Request::method() !== 'OPTIONS' &&
             Request::method() !== 'HEAD' &&
             Request::contentType() !== "text/html" &&
-            !Request::isAccepts('text/html')) {
+            Request::isAccepts('application/json')) {
             $response = [
                 'code' => $this->getStatusCode(),
                 'success' => $this->getSuccess(),

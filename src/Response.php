@@ -8,9 +8,12 @@
 namespace Router;
 
 use Router\Enums\HttpStatus;
+use Router\Traits\ResponseHeaders;
 
 class Response
 {
+    use ResponseHeaders;
+
     protected HttpStatus $httpStatus = HttpStatus::OK;
     protected bool $success = true;
     protected bool $cache = false;

@@ -24,7 +24,7 @@ class Router
 
     public function __destruct()
     {
-        Cors::handleCors();
+        Response::handleHeaders();
     }
 
     /**

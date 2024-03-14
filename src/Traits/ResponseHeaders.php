@@ -1,13 +1,12 @@
 <?php
 /**
  * @author Gökhan Kurtuluş @gokhankurtulus
- * Date: 27.02.2024 Time: 07:19
+ * Date: 14.03.2024 Time: 23:53
  */
 
+namespace Router\Traits;
 
-namespace Router;
-
-class Cors
+trait ResponseHeaders
 {
     protected static array $origins = ['*'];
     protected static array $methods = ['OPTIONS', 'HEAD', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
@@ -139,17 +138,15 @@ class Cors
         static::$xFrameOptions = $xFrameOptions;
     }
 
-
-    public static function handleCors(): void
+    public static function handleHeaders(): void
     {
-        if (Request::method() === 'OPTIONS') {
-            header("Access-Control-Allow-Origin: " . implode(', ', array_map('trim', static::getOrigins())));
-            header("Access-Control-Allow-Methods: " . implode(', ', array_map('trim', static::getMethods())));
-            header("Access-Control-Allow-Headers: " . implode(', ', array_map('trim', static::getHeaders())));
-            header("Access-Control-Expose-Headers: " . implode(', ', array_map('trim', static::getExposedHeaders())));
-            header("Access-Control-Max-Age: " . static::getMaxAge());
-            header("Access-Control-Allow-Credentials: " . (static::$credentials ? "true" : "false"));
-        }
+        header("Access-Control-Allow-Origin: " . implode(', ', array_map('trim', static::getOrigins())));
+        header("Access-Control-Allow-Methods: " . implode(', ', array_map('trim', static::getMethods())));
+        header("Access-Control-Allow-Headers: " . implode(', ', array_map('trim', static::getHeaders())));
+        header("Access-Control-Expose-Headers: " . implode(', ', array_map('trim', static::getExposedHeaders())));
+        header("Access-Control-Max-Age: " . static::getMaxAge());
+        header("Access-Control-Allow-Credentials: " . (static::$credentials ? "true" : "false"));
+
         header("Content-Type: " . static::getContentType());
         header("Content-Security-Policy: " . static::getContentSecurityPolicy());
         header("X-Frame-Options: " . static::getXFrameOptions());

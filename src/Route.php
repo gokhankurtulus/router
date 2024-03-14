@@ -66,17 +66,22 @@ class Route
 
     protected static function addRoute(mixed $callback): void
     {
+        $method = static::$method;
+        $path = static::$path;
+        $controller = static::$controller;
+        $action = static::$action;
+
         if (is_array($callback)) {
-            static::$controller = $callback[0];
-            static::$action = $callback[1];
+            [$controller, $action] = $callback;
         } else {
-            static::$action = $callback;
+            $action = $callback;
         }
+
         $route = [
-            'method' => static::$method,
-            'path' => static::$path,
-            'controller' => static::$controller,
-            'action' => static::$action,
+            'method' => $method,
+            'path' => $path,
+            'controller' => $controller,
+            'action' => $action,
         ];
         Router::addRoute($route);
     }

@@ -22,11 +22,6 @@ class Router
         static::$response = $response ?? new Response();
     }
 
-    public function __destruct()
-    {
-        Response::handleHeaders();
-    }
-
     /**
      * @return bool
      * @throws HttpException

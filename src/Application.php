@@ -25,12 +25,17 @@ class Application
     public function handler(callable $callback): void
     {
         try {
+            ob_start();
             static::$request = new Request();
             static::$response = new Response();
             static::$router = new Router(static::$request, static::$response);
 
             call_user_func($callback);
+
             echo static::$router->resolve();
+            static::$response::handleHeaders();
+
+            ob_end_flush();
         } catch (HttpException $httpException) {
             $httpStatus = HttpStatus::from($httpException->getCode());
             $message = $httpException->getMessage();;

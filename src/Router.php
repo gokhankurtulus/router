@@ -23,96 +23,185 @@ class Router
     }
 
     /**
-     * @return bool
+     * Resolve the current request and find the route to handle it.
+     *
+     * @return mixed
      * @throws HttpException
      */
     public function resolve(): mixed
     {
-        $requestPath = static::$request::path();
-        $requestMethod = static::$request::method();
-        $route = $this->checkRoute($requestPath, $requestMethod);
+        $matchedRoute = $this->findMatchingRoute(
+            static::$request::path(),
+            static::$request::method()
+        );
 
-        return $this->handleEndpoint($route, $requestPath);
+        return $this->handleMatchedRoute($matchedRoute);
     }
 
     /**
+     * Handle the matched route by validating and executing its action.
+     *
+     * @param array $matchedRoute
+     * @return mixed
      * @throws HttpException
      */
-    protected function handleEndpoint(array $route, string $path): mixed
+    protected function handleMatchedRoute(array $matchedRoute): mixed
     {
-        if (!$route['endpoint_exists'])
-            throw new HttpException(HttpStatus::NOT_FOUND);
+        $this->validateMatchedRoute($matchedRoute);
 
-        if (!$route['method_exists'])
+        $matches = $this->extractRouteMatches(
+            $matchedRoute['route']['path'],
+            static::$request::path()
+        );
+
+        return $this->executeRouteAction($matchedRoute['route'], $matches);
+    }
+
+    /**
+     * Validate if the matched route exists and if the HTTP method is allowed.
+     *
+     * @param array $matchedRoute
+     * @throws HttpException
+     */
+    protected function validateMatchedRoute(array $matchedRoute): void
+    {
+        if (!$matchedRoute['exists']) {
+            throw new HttpException(HttpStatus::NOT_FOUND);
+        }
+
+        if (!$matchedRoute['method_matches']) {
             throw new HttpException(HttpStatus::METHOD_NOT_ALLOWED);
+        }
+    }
 
-        if (!$route['endpoint'])
-            throw new HttpException(HttpStatus::NOT_FOUND);
+    /**
+     * Execute the route action based on the matched route.
+     *
+     * @param array $route
+     * @param array $matches
+     * @return mixed
+     */
+    protected function executeRouteAction(array $route, array $matches): mixed
+    {
+        if (is_callable($route['action'])) {
+            return call_user_func($route['action'], $matches);
+        }
 
-        $endpoint = $route['endpoint'];
+        if (isset($route['controller']) && class_exists($route['controller'])) {
+            $controller = new $route['controller']($matches, static::$request, static::$response);
 
-        $matches = $this->matchRoute($endpoint, $path);
-        if ($matches !== false) {
-            if (is_callable($endpoint['action'])) {
-                return call_user_func($endpoint['action'], $matches);
-            } elseif (isset($endpoint['controller']) && class_exists($endpoint['controller'])) {
-                $controller = new $endpoint['controller']($matches, static::$request, static::$response);
-                if ($controller && is_callable([$controller, $endpoint['action']])) {
-                    return call_user_func([$controller, $endpoint['action']]);
-                }
+            if (is_callable([$controller, $route['action']])) {
+                return call_user_func([$controller, $route['action']]);
             }
         }
 
         return false;
     }
 
-    protected function checkRoute(string $path, string $method): array
-    {
-        $route = $this->findMatchingRoute($path, $method);
-        if ($route['endpoint_exists'] && !$route['method_exists']) {
-            $route = $this->findMatchingRoute($path, 'ANY');
-        }
-        return $route;
-    }
-
+    /**
+     * Find a matching route based on the request path and method.
+     *
+     * @param string $path
+     * @param string $method
+     * @return array|null
+     */
     protected function findMatchingRoute(string $path, string $method): ?array
     {
-        $routeData = [
-            'endpoint_exists' => false,
-            'method_exists' => false,
-            'endpoint' => null,
-        ];
         foreach (static::getRoutes() as $route) {
-            if ($this->matchRoute($route, $path) !== false) {
-                $routeData['endpoint_exists'] = true;
-                if ($route['method'] === $method) {
-                    $routeData['method_exists'] = true;
-                    $routeData['endpoint'] = $route;
-                    break;
+            if ($this->matchPathToRoute($route, $path)) {
+                if ($route['method'] === $method || $route['method'] === 'ANY') {
+                    return [
+                        'exists' => true,
+                        'method_matches' => true,
+                        'route' => $route
+                    ];
                 }
+
+                return [
+                    'exists' => true,
+                    'method_matches' => false,
+                    'route' => $route
+                ];
             }
         }
-        return $routeData;
+
+        return [
+            'exists' => false,
+            'method_matches' => false,
+            'route' => null
+        ];
     }
 
-    protected function matchRoute(array &$route, string $path): false|array
+    /**
+     * Create a regular expression pattern from the given path.
+     *
+     * This method replaces route parameters in the path with named capturing groups.
+     *
+     * @param string $path The path containing route parameters.
+     * @return string The regular expression pattern.
+     */
+    protected function createPatternFromPath(string $path): string
     {
-        $route['path'] = preg_replace('/{([^}]+)}/', '(?<\1>[^/]+)', $route['path']);
-        if (preg_match("#^{$route['path']}/?$#", $path, $matches))
+        return preg_replace('/{([^}]+)}/', '(?<\1>[^/]+)', $path);
+    }
+
+    /**
+     * Check if the request path matches the route path pattern.
+     *
+     * @param array $route
+     * @param string $path
+     * @return bool
+     */
+    protected function matchPathToRoute(array $route, string $path): bool
+    {
+        $pattern = $this->createPatternFromPath($route['path']);
+        return (bool)preg_match("#^{$pattern}/?$#", $path);
+    }
+
+    /**
+     * Extract the route parameters from the request path.
+     *
+     * This method matches the request path against the route's pattern and extracts
+     * any named capturing groups as route parameters.
+     *
+     * @param string $routePath
+     * @param string $requestPath
+     * @return array|false
+     */
+    protected function extractRouteMatches(string $routePath, string $requestPath): array|false
+    {
+        $pattern = $this->createPatternFromPath($routePath);
+        if (preg_match("#^{$pattern}/?$#", $requestPath, $matches)) {
             return array_filter($matches, fn($key) => !is_numeric($key), ARRAY_FILTER_USE_KEY);
+        }
         return false;
     }
 
+    /**
+     * Get all registered routes.
+     *
+     * @return array
+     */
     public static function getRoutes(): array
     {
         return static::$routes;
     }
 
-    protected static function setRoutes(array $routes): void
+    /**
+     * Set the routes for the router.
+     *
+     * @param array $routes
+     */
+    public static function setRoutes(array $routes): void
     {
         static::$routes = $routes;
     }
 
+    /**
+     * Add a new route to the router.
+     *
+     * @param array $route
+     */
     public static function addRoute(array $route): void
     {
         static::$routes[] = $route;

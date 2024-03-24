@@ -9,11 +9,9 @@ namespace Router;
 
 class Route
 {
-    protected static ?string $method = null;
-    protected static ?string $path = null;
     protected static ?string $prefix = null;
     protected static ?string $controller = null;
-    protected static mixed $action = null;
+    protected static array $middlewares = [];
 
     public static function controller(string $controller, callable $callback): static
     {
@@ -31,45 +29,43 @@ class Route
         return new static;
     }
 
+    public static function middleware($middlewares, callable $callback): static
+    {
+        static::$middlewares = is_array($middlewares) ? $middlewares : [$middlewares];
+        $callback();
+        static::$middlewares = [];
+        return new static;
+    }
+
     public static function group(callable $callback): void
     {
         $callback();
     }
 
-    public static function get(string $path, mixed $callback): void
+    public static function get(string $path, mixed $callback, array $middlewares = []): void
     {
-        static::$method = 'GET';
-        static::$path = static::$prefix ? static::$prefix . $path : $path;
-        static::addRoute($callback);
+        static::addRoute('GET', $path, $callback, $middlewares);
     }
 
-    public static function post(string $path, mixed $callback): void
+    public static function post(string $path, mixed $callback, array $middlewares = []): void
     {
-        static::$method = 'POST';
-        static::$path = static::$prefix ? static::$prefix . $path : $path;
-        static::addRoute($callback);
+        static::addRoute('POST', $path, $callback, $middlewares);
     }
 
-    public static function put(string $path, mixed $callback): void
+    public static function put(string $path, mixed $callback, array $middlewares = []): void
     {
-        static::$method = 'PUT';
-        static::$path = static::$prefix ? static::$prefix . $path : $path;
-        static::addRoute($callback);
+        static::addRoute('PUT', $path, $callback, $middlewares);
     }
 
-    public static function any(string $path, mixed $callback): void
+    public static function any(string $path, mixed $callback, array $middlewares = []): void
     {
-        static::$method = 'ANY';
-        static::$path = static::$prefix ? static::$prefix . $path : $path;
-        static::addRoute($callback);
+        static::addRoute('ANY', $path, $callback, $middlewares);
     }
 
-    protected static function addRoute(mixed $callback): void
+    protected static function addRoute(string $method, string $path, mixed $callback, array $middlewares = []): void
     {
-        $method = static::$method;
-        $path = static::$path;
         $controller = static::$controller;
-        $action = static::$action;
+        $action = null;
 
         if (is_array($callback)) {
             [$controller, $action] = $callback;
@@ -77,10 +73,13 @@ class Route
             $action = $callback;
         }
 
+        $middlewares = array_unique(array_merge(static::$middlewares, $middlewares));
+
         $route = [
             'method' => $method,
-            'path' => $path,
+            'path' => static::$prefix ? static::$prefix . $path : $path,
             'controller' => $controller,
+            'middlewares' => $middlewares,
             'action' => $action,
         ];
         Router::addRoute($route);

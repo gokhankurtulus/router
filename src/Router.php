@@ -124,7 +124,7 @@ class Router
     protected function callAction(array $route, array $matches): mixed
     {
         if (is_callable($route['action'])) {
-            return call_user_func($route['action'], $matches);
+            return call_user_func($route['action'], $matches, static::$request, static::$response);
         }
 
         if (isset($route['controller']) && class_exists($route['controller'])) {

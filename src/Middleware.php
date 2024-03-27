@@ -9,5 +9,5 @@ namespace Router;
 
 abstract class Middleware
 {
-    abstract public function handle(Request $request, \Closure $next): mixed;
+    abstract public function handle(Request $request, Response $response, \Closure $next): mixed;
 }

@@ -26,10 +26,10 @@ class Router
     /**
      * Resolve the current request and find the route to handle it.
      *
-     * @return mixed
+     * @return Response|false
      * @throws HttpException|RouterException
      */
-    public function resolve(): mixed
+    public function resolve(): Response|false
     {
         $matchedRoute = $this->findMatchingRoute(
             static::$request::path(),
@@ -43,10 +43,10 @@ class Router
      * Handle the matched route by validating and executing its action.
      *
      * @param array $matchedRoute
-     * @return mixed
+     * @return Response|false
      * @throws HttpException|RouterException
      */
-    protected function handleMatchedRoute(array $matchedRoute): mixed
+    protected function handleMatchedRoute(array $matchedRoute): Response|false
     {
         $this->validateMatchedRoute($matchedRoute);
 
@@ -80,12 +80,13 @@ class Router
      *
      * @param array $route
      * @param array $matches
-     * @return mixed
+     * @return Response|false
      * @throws RouterException
      */
-    protected function executeRouteAction(array $route, array $matches): mixed
+    protected function executeRouteAction(array $route, array $matches): Response|false
     {
         $request = static::$request;
+        $response = static::$response;
 
         if (isset($route['middlewares']) && is_array($route['middlewares'])) {
             foreach ($route['middlewares'] as $middlewareClass) {
@@ -103,7 +104,7 @@ class Router
             // Reverse the middleware array. Because the last middleware in the array should be the first one to process the request.
                 array_reverse($route['middlewares']),
                 // For each middleware, create a new instance and call its handle method. Process the request through each middleware.
-                fn($next, $middlewareClass) => fn($request) => (new $middlewareClass)->handle($request, $next),
+                fn($next, $middlewareClass) => fn($request) => (new $middlewareClass)->handle($request, $response, $next),
                 // Start with a closure that calls the route action. This is the final action to be performed after all middlewares have processed the request.
                 fn($request) => $this->callAction($route, $matches)
             );
@@ -115,24 +116,26 @@ class Router
     }
 
     /**
-     * Call the action of the route.
-     *
      * @param array $route
      * @param array $matches
-     * @return mixed
+     * @return Response|false
      */
-    protected function callAction(array $route, array $matches): mixed
+    protected function callAction(array $route, array $matches): Response|false
     {
-        if (is_callable($route['action'])) {
-            return call_user_func($route['action'], $matches, static::$request, static::$response);
-        }
+        $result = null;
 
-        if (isset($route['controller']) && class_exists($route['controller'])) {
+        if (is_callable($route['action'])) {
+            $result = call_user_func($route['action'], $matches, static::$request, static::$response);
+        } elseif (isset($route['controller']) && class_exists($route['controller'])) {
             $controller = new $route['controller']($matches, static::$request, static::$response);
 
             if (is_callable([$controller, $route['action']])) {
-                return call_user_func([$controller, $route['action']]);
+                $result = call_user_func([$controller, $route['action']]);
             }
+        }
+
+        if ($result instanceof \Router\Response) {
+            return $result;
         }
 
         return false;

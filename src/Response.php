@@ -8,107 +8,90 @@
 namespace Router;
 
 use Router\Enums\HttpStatus;
-use Router\Traits\ResponseHeaders;
+use Router\Traits\Views;
 
 class Response
 {
-    use ResponseHeaders;
+    use Views;
 
-    protected HttpStatus $httpStatus = HttpStatus::OK;
-    protected bool $success = true;
-    protected bool $cache = false;
-    private array $messages = [];
-    private array $data = [];
+    protected array $cors = [
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'OPTIONS, HEAD, GET, POST, PUT, PATCH, DELETE',
+        'Access-Control-Allow-Headers' => 'Authorization, Content-Type, Accept',
+        'Access-Control-Expose-Headers' => '',
+        'Access-Control-Max-Age' => '60',
+        'Access-Control-Allow-Credentials' => 'false',
+    ];
+    protected array $headers = [];
+    protected string $content = '';
+    protected HttpStatus $status = HttpStatus::OK;
 
-    public function getHttpStatus(): HttpStatus
+    public function __construct(string $content = '')
     {
-        return $this->httpStatus;
+        $this->content = $content;
     }
 
-    public function setHttpStatus(HttpStatus $httpStatus): static
+    public function cors(string $name, string $value): static
     {
-        $this->httpStatus = $httpStatus;
+        $this->cors[$name] = $value;
         return $this;
     }
 
-    public function getStatusCode(): int
+    public function header(string $name, string $value): static
     {
-        return $this->getHttpStatus()->value;
-    }
-
-    public function getSuccess(): bool
-    {
-        return $this->success;
-    }
-
-    public function setSuccess(bool $success): static
-    {
-        $this->success = $success;
+        $this->headers[$name] = $value;
         return $this;
     }
 
-    public function getCache(): bool
+    public function content(string $content): static
     {
-        return $this->cache;
-    }
-
-    public function setCache(bool $cache): static
-    {
-        $this->cache = $cache;
+        $this->content = $content;
         return $this;
     }
 
-    public function getMessages(): array
+    public function status(HttpStatus $status): static
     {
-        return $this->messages;
-    }
-
-    public function setMessages(array $messages): static
-    {
-        $this->messages = $messages;
+        $this->status = $status;
         return $this;
     }
 
-    public function addMessage(string $message): static
+    public function redirect(string $url, bool $permanent = false): static
     {
-        $this->messages[] = $message;
+        $this->header('Location', $url);
+        $this->status($permanent ? HttpStatus::MOVED_PERMANENTLY : HttpStatus::FOUND);
         return $this;
     }
 
-    public function getData(): array
+    public function json(array $data): static
     {
-        return $this->data;
-    }
-
-    public function setData(array $data): static
-    {
-        $this->data = $data;
+        $this->header('Content-Type', 'application/json');
+        $this->content = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
         return $this;
     }
 
-    public function send(): void
+    public function view(string $view, array $params = [], ?string $layout = null): static
     {
-        if ($this->getCache()) {
-            header('Cache-Control: max-age=60');
-        } else {
-            header('Cache-Control: no-cache, no-store');
+        $this->header('Content-Type', 'text/html');
+        $this->content($this->render($view, $params, $layout));
+        return $this;
+    }
+
+    protected function sendHeaders(): void
+    {
+        foreach ($this->cors as $name => $value) {
+            $this->header($name, $value);
         }
-        if (is_numeric($this->getStatusCode())) {
-            http_response_code($this->getStatusCode());
+        foreach ($this->headers as $name => $value) {
+            header("{$name}: {$value}");
         }
-        if (Request::method() !== 'OPTIONS' &&
-            Request::method() !== 'HEAD' &&
-            Request::contentType() !== "text/html" &&
-            Request::isAccepts('application/json')) {
-            $response = [
-                'code' => $this->getStatusCode(),
-                'success' => $this->getSuccess(),
-                'messages' => $this->getMessages(),
-                'data' => $this->getData()
-            ];
-            echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        }
-        die();
     }
 
+    public function send(): string
+    {
+        http_response_code($this->status->value);
+
+        $this->sendHeaders();
+
+        return $this->content;
+    }
 }

@@ -32,9 +32,7 @@ class Application
 
             call_user_func($callback);
 
-            echo static::$router->resolve();
-            static::$response::handleHeaders();
-
+            echo static::$router->resolve()->send();
             ob_end_flush();
         } catch (HttpException $httpException) {
             $httpStatus = HttpStatus::from($httpException->getCode());
@@ -54,17 +52,18 @@ class Application
 
     protected function sendErrorResponse(HttpStatus $httpStatus, string $message): void
     {
-        if (static::$request::contentType() === "text/html" || static::$request::isAccepts('text/html')) {
-            $error = [
-                'code' => $httpStatus->value,
-                'message' => $message
-            ];
-            echo View::render("_error", ['error' => $error], View::getErrorLayout());
+        $error = [
+            'code' => $httpStatus->value,
+            'message' => $message
+        ];
+        if (static::$request::contentType() === "application/json" && static::$request::isAccepts('application/json')) {
+            echo static::$response->status($httpStatus)
+                ->json($error)
+                ->send();
+            return;
         }
-        static::$response->setHttpStatus($httpStatus)
-            ->setSuccess(false)
-            ->setCache(false)
-            ->addMessage($message)
+        echo static::$response->status($httpStatus)
+            ->view("_error", ['error' => $error], static::$response::getErrorLayout())
             ->send();
     }
 }

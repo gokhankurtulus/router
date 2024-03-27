@@ -24,9 +24,10 @@ abstract class Controller
     }
 
     /**
+     * @return Response
      * @throws HttpException
      */
-    public function any(): mixed
+    public function any(): Response
     {
         if (method_exists($this, 'get') && $this->request::method() === 'GET') {
             return $this->get();
@@ -39,6 +40,6 @@ abstract class Controller
         } elseif ($this->request::method() !== 'OPTIONS' && $this->request::method() !== 'HEAD') {
             throw new HttpException(HttpStatus::METHOD_NOT_ALLOWED);
         }
-        return false;
+        return $this->response;
     }
 }

@@ -62,10 +62,10 @@ class Response
         return $this;
     }
 
-    public function json(array $data): static
+    public function json(array $data, int $flags = 0): static
     {
         $this->header('Content-Type', 'application/json');
-        $this->content = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        $this->content = json_encode($data, $flags);
         return $this;
     }
 

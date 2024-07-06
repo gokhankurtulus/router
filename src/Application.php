@@ -63,7 +63,7 @@ class Application
             return;
         }
         echo static::$response->status($httpStatus)
-            ->view("_error", ['error' => $error], static::$response::getErrorLayout())
+            ->view("_error", ['error' => $error], Resource::getErrorLayout())
             ->send();
     }
 }

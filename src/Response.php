@@ -8,12 +8,9 @@
 namespace Router;
 
 use Router\Enums\HttpStatus;
-use Router\Traits\Views;
 
 class Response
 {
-    use Views;
-
     protected array $cors = [
         'Access-Control-Allow-Origin' => '*',
         'Access-Control-Allow-Methods' => 'OPTIONS, HEAD, GET, POST, PUT, PATCH, DELETE',
@@ -72,7 +69,21 @@ class Response
     public function view(string $view, array $params = [], ?string $layout = null): static
     {
         $this->header('Content-Type', 'text/html');
-        $this->content($this->render($view, $params, $layout));
+        $this->content(Resource::render($view, $params, $layout));
+        return $this;
+    }
+
+    public function file(string $mime, string $size, string $content): static
+    {
+        $this->header('Content-Type', $mime);
+        $this->header('Content-Length', $size);
+        $this->content = $content;
+        return $this;
+    }
+
+    public function download(string $fileName): static
+    {
+        $this->header('Content-Disposition', "attachment; filename=\"{$fileName}\"");
         return $this;
     }
 

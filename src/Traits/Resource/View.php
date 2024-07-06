@@ -1,14 +1,13 @@
 <?php
 /**
  * @author Gökhan Kurtuluş @gokhankurtulus
- * Date: 27.03.2024 Time: 03:08
+ * Date: 6.07.2024 Time: 15:47
  */
 
-namespace Router\Traits;
+namespace Router\Traits\Resource;
 
 use Router\Loggers\ViewLogger;
-
-trait Views
+trait View
 {
     protected static string $viewsPath = "";
     protected static string $errorLayout = "";
@@ -22,7 +21,7 @@ trait Views
 
     public static function setViewsPath(string $viewsPath): void
     {
-        static::$viewsPath = $viewsPath;
+        static::$viewsPath = realpath($viewsPath);
     }
 
     public static function getErrorLayout(): string
@@ -45,12 +44,12 @@ trait Views
         static::$carryData = array_merge(static::$carryData, $data);
     }
 
-    protected function render(string $view, array $params = [], ?string $layout = null): false|string
+    public static function render(string $view, array $params = [], ?string $layout = null): false|string
     {
         $params = array_merge(static::$carryData, $params);
-        $viewContent = $this->renderContent($view, $params);
+        $viewContent = static::renderContent($view, $params);
         if ($layout) {
-            $viewLayout = $this->renderLayout($layout, $params);
+            $viewLayout = static::renderLayout($layout, $params);
             if ($viewLayout) {
                 return str_replace('{{content}}', $viewContent, $viewLayout);
             }
@@ -70,14 +69,6 @@ trait Views
         return static::renderFile($path, $params, "renderContent");
     }
 
-    protected static function checkFileExistence(string $path): bool
-    {
-        if (!isset(static::$fileExistenceCache[$path])) {
-            static::$fileExistenceCache[$path] = is_file($path) && is_dir(dirname($path));
-        }
-        return static::$fileExistenceCache[$path];
-    }
-
     protected static function renderFile(string $path, array $params, string $methodName): false|string
     {
         if (!static::checkFileExistence($path)) {
@@ -88,5 +79,13 @@ trait Views
         ob_start();
         include_once $path;
         return ob_get_clean();
+    }
+
+    protected static function checkFileExistence(string $path): bool
+    {
+        if (!isset(static::$fileExistenceCache[$path])) {
+            static::$fileExistenceCache[$path] = is_file($path) && is_dir(dirname($path));
+        }
+        return static::$fileExistenceCache[$path];
     }
 }

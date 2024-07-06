@@ -26,7 +26,8 @@
     "gokhankurtulus/logger": "^1.0",
     "ext-curl": "*",
     "ext-simplexml": "*",
-    "ext-libxml": "*"
+    "ext-libxml": "*",
+    "ext-fileinfo": "*"
   },
   "config": {
     "preferred-install": "dist"

@@ -7,6 +7,7 @@
 
 namespace Router;
 
+use Router\Abstracts\Middleware;
 use Router\Enums\HttpStatus;
 use Router\Exceptions\HttpException;
 use Router\Exceptions\RouterException;

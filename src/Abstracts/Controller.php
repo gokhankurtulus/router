@@ -5,10 +5,12 @@
  */
 
 
-namespace Router;
+namespace Router\Abstracts;
 
 use Router\Enums\HttpStatus;
 use Router\Exceptions\HttpException;
+use Router\Request;
+use Router\Response;
 
 abstract class Controller
 {

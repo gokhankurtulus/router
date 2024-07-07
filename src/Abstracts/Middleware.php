@@ -5,7 +5,10 @@
  */
 
 
-namespace Router;
+namespace Router\Abstracts;
+
+use Router\Request;
+use Router\Response;
 
 abstract class Middleware
 {

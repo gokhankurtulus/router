@@ -151,8 +151,17 @@ class Router
      */
     protected function findMatchingRoute(string $path, string $method): ?array
     {
-        foreach (static::getRoutes() as $route) {
-            if ($this->matchPathToRoute($route, $path)) {
+        // Iterate over all registered routes.
+        foreach (static::getRoutes() as $routePath => $routes) {
+            // Create a regular expression pattern from the route path.
+            $pattern = $this->createPatternFromPath($routePath);
+            // If the request path does not match the pattern, continue with the next route.
+            if (!$this->matchPathToRoute(['path' => $routePath], $path)) {
+                continue;
+            }
+            // If the request path matches the pattern, check if the request method matches any of the route's methods.
+            foreach ($routes as $route) {
+                // If the request method matches the route's method, return information about the route.
                 if ($route['method'] === $method || $route['method'] === 'ANY') {
                     return [
                         'exists' => true,
@@ -160,15 +169,15 @@ class Router
                         'route' => $route
                     ];
                 }
-
-                return [
-                    'exists' => true,
-                    'method_matches' => false,
-                    'route' => $route
-                ];
             }
+            // If the request method does not match any of the route's methods, return information about the first route.
+            return [
+                'exists' => true,
+                'method_matches' => false,
+                'route' => $routes[0]
+            ];
         }
-
+        // If no route was matched, return null.
         return [
             'exists' => false,
             'method_matches' => false,
@@ -248,6 +257,6 @@ class Router
      */
     public static function addRoute(array $route): void
     {
-        static::$routes[] = $route;
+        static::$routes[$route['path']][] = $route;
     }
 }

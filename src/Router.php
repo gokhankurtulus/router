@@ -89,7 +89,7 @@ class Router
         $request = static::$request;
         $response = static::$response;
 
-        if (isset($route['middlewares']) && is_array($route['middlewares'])) {
+        if (!empty($route['middlewares']) && is_array($route['middlewares'])) {
             foreach ($route['middlewares'] as $middlewareClass) {
                 if (!class_exists($middlewareClass)) {
                     throw new RouterException("Middleware class {$middlewareClass} does not exist.");

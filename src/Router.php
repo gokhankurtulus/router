@@ -27,10 +27,10 @@ class Router
     /**
      * Resolve the current request and find the route to handle it.
      *
-     * @return Response|false
+     * @return Response
      * @throws HttpException|RouterException
      */
-    public function resolve(): Response|false
+    public function resolve(): Response
     {
         $matchedRoute = $this->findMatchingRoute(
             static::$request::path(),
@@ -44,10 +44,10 @@ class Router
      * Handle the matched route by validating and executing its action.
      *
      * @param array $matchedRoute
-     * @return Response|false
+     * @return Response
      * @throws HttpException|RouterException
      */
-    protected function handleMatchedRoute(array $matchedRoute): Response|false
+    protected function handleMatchedRoute(array $matchedRoute): Response
     {
         $this->validateMatchedRoute($matchedRoute);
 
@@ -81,10 +81,10 @@ class Router
      *
      * @param array $route
      * @param array $matches
-     * @return Response|false
+     * @return Response
      * @throws RouterException
      */
-    protected function executeRouteAction(array $route, array $matches): Response|false
+    protected function executeRouteAction(array $route, array $matches): Response
     {
         $request = static::$request;
         $response = static::$response;
@@ -117,29 +117,39 @@ class Router
     }
 
     /**
+     * Call the action of the matched route. The action can be a callable or a controller method.
      * @param array $route
      * @param array $matches
-     * @return Response|false
+     * @return Response
+     * @throws RouterException
      */
-    protected function callAction(array $route, array $matches): Response|false
+    protected function callAction(array $route, array $matches): Response
     {
         $result = null;
 
         if (is_callable($route['action'])) {
             $result = call_user_func($route['action'], $matches, static::$request, static::$response);
-        } elseif (isset($route['controller']) && class_exists($route['controller'])) {
+        } elseif (
+            isset($route['controller'])
+            && class_exists($route['controller'])
+            && is_subclass_of($route['controller'], Abstracts\Controller::class)
+        ) {
             $controller = new $route['controller']($matches, static::$request, static::$response);
 
             if (is_callable([$controller, $route['action']])) {
                 $result = call_user_func([$controller, $route['action']]);
+            } else {
+                throw new RouterException("Action {$route['action']} does not exist in controller {$route['controller']} or is not callable.");
             }
+        } else {
+            throw new RouterException("Action {$route['action']} is not callable.");
         }
 
-        if ($result instanceof \Router\Response) {
-            return $result;
+        if (!$result instanceof \Router\Response) {
+            $responseClass = \Router\Response::class;
+            throw new RouterException("Action {$route['action']} must return an instance of {$responseClass}.");
         }
-
-        return false;
+        return $result;
     }
 
     /**
@@ -147,14 +157,12 @@ class Router
      *
      * @param string $path
      * @param string $method
-     * @return array|null
+     * @return array Information about the matched route.
      */
-    protected function findMatchingRoute(string $path, string $method): ?array
+    protected function findMatchingRoute(string $path, string $method): array
     {
         // Iterate over all registered routes.
         foreach (static::getRoutes() as $routePath => $routes) {
-            // Create a regular expression pattern from the route path.
-            $pattern = $this->createPatternFromPath($routePath);
             // If the request path does not match the pattern, continue with the next route.
             if (!$this->matchPathToRoute(['path' => $routePath], $path)) {
                 continue;
@@ -203,7 +211,7 @@ class Router
      *
      * @param array $route
      * @param string $path
-     * @return bool
+     * @return bool True if the request path matches the route path pattern, false otherwise.
      */
     protected function matchPathToRoute(array $route, string $path): bool
     {
@@ -219,15 +227,15 @@ class Router
      *
      * @param string $routePath
      * @param string $requestPath
-     * @return array|false
+     * @return array An associative array of route parameters.
      */
-    protected function extractRouteMatches(string $routePath, string $requestPath): array|false
+    protected function extractRouteMatches(string $routePath, string $requestPath): array
     {
         $pattern = $this->createPatternFromPath($routePath);
         if (preg_match("#^{$pattern}/?$#", $requestPath, $matches)) {
             return array_filter($matches, fn($key) => !is_numeric($key), ARRAY_FILTER_USE_KEY);
         }
-        return false;
+        return [];
     }
 
     /**

@@ -57,6 +57,11 @@ class Route
         static::addRoute('PUT', $path, $callback, $middlewares);
     }
 
+    public static function delete(string $path, mixed $callback, array $middlewares = []): void
+    {
+        static::addRoute('DELETE', $path, $callback, $middlewares);
+    }
+
     public static function any(string $path, mixed $callback, array $middlewares = []): void
     {
         static::addRoute('ANY', $path, $callback, $middlewares);

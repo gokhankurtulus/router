@@ -44,6 +44,32 @@ class Session
         unset($_SESSION[$key]);
     }
 
+    public static function setSessionName(string $name): void
+    {
+        session_name($name);
+    }
+
+    public static function setSessionLifetime(int $lifetime): void
+    {
+        ini_set('session.gc_maxlifetime', $lifetime);
+        ini_set('session.cookie_lifetime', $lifetime);
+    }
+
+    public static function setSessionSavePath(string $path): void
+    {
+        session_save_path($path);
+    }
+
+    public static function setSessionDomain(string $domain): void
+    {
+        ini_set('session.cookie_domain', $domain);
+    }
+
+    public static function setSessionCookieSecure(bool $value): void
+    {
+        ini_set('session.cookie_secure', $value ? '1' : '0');
+    }
+
     public static function setSessionCookieHttpOnly(bool $value): void
     {
         ini_set('session.cookie_httponly', $value ? '1' : '0');
@@ -52,11 +78,6 @@ class Session
     public static function setSessionUseOnlyCookies(bool $value): void
     {
         ini_set('session.use_only_cookies', $value ? '1' : '0');
-    }
-
-    public static function setSessionCookieSecure(bool $value): void
-    {
-        ini_set('session.cookie_secure', $value ? '1' : '0');
     }
 
     public static function setSessionCookieSameSite(string $value): void

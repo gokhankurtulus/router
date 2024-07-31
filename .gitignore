@@ -1,3 +1,5 @@
 /.idea/
 /vendor/
+/.scannerwork/
 composer.lock
+sonar-project.properties

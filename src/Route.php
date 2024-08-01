@@ -68,7 +68,10 @@ class Route
      */
     public static function middleware(array|string $middlewares, callable $callback): static
     {
-        static::$middlewares = is_array($middlewares) ? $middlewares : [$middlewares];
+        static::$middlewares = array_unique(array_merge(
+            static::$middlewares,
+            is_array($middlewares) ? $middlewares : [$middlewares]
+        ));
         $callback();
         static::$middlewares = [];
         return new static;

@@ -16,7 +16,6 @@ class Router
 {
     protected static ?Request $request = null;
     protected static ?Response $response = null;
-    protected static array $routes = [];
 
     public function __construct(?Request $request = null, ?Response $response = null)
     {
@@ -147,7 +146,7 @@ class Router
 
         if (!$result instanceof \Router\Response) {
             $responseClass = \Router\Response::class;
-            throw new RouterException("Action {$route['action']} must return an instance of {$responseClass}.");
+            throw new RouterException("Action must return an instance of {$responseClass}.");
         }
         return $result;
     }
@@ -232,10 +231,8 @@ class Router
     protected function extractRouteMatches(string $routePath, string $requestPath): array
     {
         $pattern = $this->createPatternFromPath($routePath);
-        if (preg_match("#^{$pattern}/?$#", $requestPath, $matches)) {
-            return array_filter($matches, fn($key) => !is_numeric($key), ARRAY_FILTER_USE_KEY);
-        }
-        return [];
+        preg_match("#^{$pattern}/?$#", $requestPath, $matches);
+        return array_filter($matches, fn($key) => !is_numeric($key), ARRAY_FILTER_USE_KEY);
     }
 
     /**
@@ -245,26 +242,6 @@ class Router
      */
     public static function getRoutes(): array
     {
-        return static::$routes;
-    }
-
-    /**
-     * Set the routes for the router.
-     *
-     * @param array $routes
-     */
-    public static function setRoutes(array $routes): void
-    {
-        static::$routes = $routes;
-    }
-
-    /**
-     * Add a new route to the router.
-     *
-     * @param array $route
-     */
-    public static function addRoute(array $route): void
-    {
-        static::$routes[$route['path']][] = $route;
+        return Route::getRoutes();
     }
 }

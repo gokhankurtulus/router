@@ -13,8 +13,9 @@ class HttpException extends \Exception
 {
     public function __construct(HttpStatus $httpStatus, string $message = "")
     {
-        if (empty($message))
-            $this->message = $httpStatus->getMessage();
         $this->code = $httpStatus->value;
+        $this->message = $message ?: $httpStatus->getMessage();
+
+        parent::__construct($this->message, $this->code);
     }
 }

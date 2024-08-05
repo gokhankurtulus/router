@@ -14,30 +14,15 @@ class Request
         return $_SERVER['REQUEST_METHOD'] ?? "";
     }
 
-    public static function headers(): bool|array
-    {
-        return getallheaders();
-    }
-
-    public static function accepts(): array
-    {
-        return explode(',', static::headers()['Accept'] ?? '');
-    }
-
-    public static function isAccepts(string $type): bool
-    {
-        return in_array($type, static::accepts());
-    }
-
-    public static function contentType(): string
-    {
-        return $_SERVER['CONTENT_TYPE'] ?? "";
-    }
-
     public static function host(): string
     {
-        $protocol = isset($_SERVER['HTTPS']) && strcasecmp($_SERVER['HTTPS'], 'off') !== 0 ? 'https' : 'http';
-        return $protocol . '://' . $_SERVER['HTTP_HOST'];
+        $protocol = 'http';
+        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+            $protocol = 'https';
+        }
+
+        $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? $_SERVER['SERVER_ADDR'] ?? 'localhost';
+        return $protocol . '://' . $host;
     }
 
     public static function uri(): string
@@ -47,15 +32,103 @@ class Request
 
     public static function path(): string
     {
-        $urlParsed = parse_url($_SERVER['REQUEST_URI']);
-        return $urlParsed['path'];
+        return (string)parse_url($_SERVER['REQUEST_URI'] ?? "", PHP_URL_PATH);
     }
 
     public static function parsedPath(): array
     {
-        $path = $_SERVER['REQUEST_URI'] ?? '/';
-        $path = ltrim($path, '/');
+        $path = ltrim(static::path(), '/');
         return explode('/', $path);
+    }
+
+    public static function queryParameters(): array
+    {
+        $query = (string)parse_url($_SERVER['REQUEST_URI'] ?? "", PHP_URL_QUERY);
+
+        parse_str($query, $params);
+        return array_map('htmlspecialchars', $params);
+    }
+
+    public static function headers(): bool|array
+    {
+        if (function_exists('getallheaders')) {
+            return getallheaders();
+        }
+
+        $headers = array();
+
+        $copy_server = array(
+            'CONTENT_TYPE' => 'Content-Type',
+            'CONTENT_LENGTH' => 'Content-Length',
+            'CONTENT_MD5' => 'Content-Md5',
+        );
+
+        foreach ($_SERVER as $key => $value) {
+            if (str_starts_with($key, 'HTTP_')) {
+                $headerKey = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($key, 5)))));
+                $headers[$headerKey] = $value;
+            } elseif (isset($copy_server[$key])) {
+                $headers[$copy_server[$key]] = $value;
+            }
+        }
+
+        if (!isset($headers['Authorization'])) {
+            if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+                $headers['Authorization'] = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+            } elseif (isset($_SERVER['PHP_AUTH_USER'])) {
+                $basic_pass = $_SERVER['PHP_AUTH_PW'] ?? '';
+                $headers['Authorization'] = 'Basic ' . base64_encode($_SERVER['PHP_AUTH_USER'] . ':' . $basic_pass);
+            } elseif (isset($_SERVER['PHP_AUTH_DIGEST'])) {
+                $headers['Authorization'] = $_SERVER['PHP_AUTH_DIGEST'];
+            }
+        }
+
+        return $headers;
+    }
+
+    public static function accept(): array
+    {
+        $acceptHeader = $_SERVER['HTTP_ACCEPT'] ?? '';
+        return array_map('trim', explode(',', $acceptHeader));
+    }
+
+    public static function isAccept(string $type): bool
+    {
+        return in_array($type, static::accept());
+    }
+
+    public static function acceptLanguage(): array
+    {
+        $acceptLanguageHeader = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
+        return array_map(fn($language) => explode(';', trim($language))[0], explode(',', $acceptLanguageHeader));
+    }
+
+    public static function isAcceptLanguage(string $language): bool
+    {
+        return in_array($language, static::acceptLanguage());
+    }
+
+    public static function acceptLanguagePriority(): array
+    {
+        $acceptLanguageHeader = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
+        $languages = array_map('trim', explode(',', $acceptLanguageHeader));
+        $languages = array_map(function ($language) {
+            $parts = explode(';', $language);
+            $priority = 1.0;
+            if (count($parts) > 1) {
+                $priority = (float)explode('=', $parts[1])[1];
+            }
+            return ['language' => $parts[0], 'priority' => $priority];
+        }, $languages);
+        usort($languages, function ($a, $b) {
+            return $b['priority'] <=> $a['priority'];
+        });
+        return array_map(fn($language) => $language['language'], $languages);
+    }
+
+    public static function contentType(): string
+    {
+        return $_SERVER['HTTP_CONTENT_TYPE'] ?? $_SERVER['CONTENT_TYPE'] ?? "";
     }
 
     public static function ip(): string
@@ -83,35 +156,32 @@ class Request
 
     public static function agent(): string
     {
-        return (string)$_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+        return $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
     }
 
-    public static function queryParameters(): array
-    {
-        $parameters = [];
-        foreach ($_GET ?? [] as $key => $value) {
-            $parameters[$key] = filter_input(INPUT_GET, $key, FILTER_SANITIZE_URL);
-        }
-        return $parameters;
-    }
-
-    public static function fields(): mixed
+    public static function fields(?string $input = null): array
     {
         $fields = [];
         $method = static::method();
         $contentType = static::contentType();
 
         if ($method === 'GET') {
-            $fields = filter_input_array(INPUT_GET, FILTER_SANITIZE_SPECIAL_CHARS);
+            $fields = static::queryParameters();
         } elseif (str_starts_with($contentType, 'multipart/form-data')) {
-            $fields = filter_var_array($_POST, FILTER_SANITIZE_SPECIAL_CHARS);
+            $fields = array_map('htmlspecialchars', $_POST);
         } elseif ($contentType === 'application/x-www-form-urlencoded') {
-            $fields = filter_input_array(INPUT_POST, FILTER_SANITIZE_SPECIAL_CHARS);
+            $fields = array_map('htmlspecialchars', $_POST);
         } elseif ($contentType === 'application/json') {
-            $fields = json_decode(file_get_contents('php://input'), true);
+            $json = $input ?? file_get_contents('php://input');
+            $fields = json_decode($json, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \InvalidArgumentException('Invalid JSON: ' . json_last_error_msg());
+            }
+            $fields = array_map('htmlspecialchars', $fields);
         } elseif ($contentType === 'application/xml' || $contentType === 'text/xml') {
-            $xml = simplexml_load_string(file_get_contents('php://input'), 'SimpleXMLElement', LIBXML_NOCDATA);
+            $xml = simplexml_load_string($input ?? file_get_contents('php://input'), 'SimpleXMLElement', LIBXML_NOCDATA);
             $fields = json_decode(json_encode((array)$xml), true);
+            $fields = array_map('htmlspecialchars', $fields);
         }
 
         return $fields;

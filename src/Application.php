@@ -35,10 +35,12 @@ class Application
             echo static::$router->resolve()->send();
             ob_end_flush();
         } catch (HttpException $httpException) {
+            ob_end_clean();
             $httpStatus = HttpStatus::from($httpException->getCode());
             $message = $httpException->getMessage();;
             $this->sendErrorResponse($httpStatus, $message);
-        } catch (\Exception|\Throwable $exception) {
+        } catch (\Throwable $exception) {
+            ob_end_clean();
             $message = "Message: {$exception->getMessage()}" . PHP_EOL;
             $file = "File: {$exception->getFile()}" . PHP_EOL;
             $line = "Line: {$exception->getLine()}" . PHP_EOL;
@@ -56,14 +58,19 @@ class Application
             'code' => $httpStatus->value,
             'message' => $message
         ];
-        if (static::$request::contentType() === "application/json" && static::$request::isAccepts('application/json')) {
+        if (static::$request::contentType() === "application/json" && static::$request::isAccept('application/json')) {
             echo static::$response->status($httpStatus)
                 ->json($error)
                 ->send();
             return;
+        } elseif (Resource::hasView("_error")) {
+            echo static::$response->status($httpStatus)
+                ->view("_error", ['error' => $error], Resource::getErrorLayout())
+                ->send();
+            return;
         }
         echo static::$response->status($httpStatus)
-            ->view("_error", ['error' => $error], Resource::getErrorLayout())
+            ->content($message)
             ->send();
     }
 }
